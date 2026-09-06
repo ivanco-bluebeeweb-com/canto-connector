@@ -1,41 +1,27 @@
-"""Connection lifecycle for Canto Connector."""
+"""Connection management for Canto Connector."""
 from __future__ import annotations
-import json, uuid
+import uuid
+from typing import Any
 from imperal_sdk import ActionResult
-from canto_client import CantoClient
 from app import chat
-from schemas import (
-    NoParams,
-    ConnectParams, ConnectionIdParams, ConnectionList, ConnectionRecord, DeleteResult
-)
+from schemas import NoParams, ConnectParams, ConnectionIdParams, ConnectionRecord, ConnectionList, DeleteResult
+from canto_client import CantoClient
 
-_SECRET = "canto_connections"
-
-def _mask(value: str) -> str:
-    return value[:4] + "…" + value[-4:] if len(value) > 10 else "***"
-
-async def _load_connections(ctx) -> list[dict]:
-    raw = await ctx.secrets.get(_SECRET)
-    if not raw: return []
-    try: data = json.loads(raw)
-    except: return []
-    return data if isinstance(data, list) else []
-
-async def _save_connections(ctx, conns: list[dict]) -> None:
-    await ctx.secrets.set(_SECRET, json.dumps(conns))
-
-async def resolve_connection(ctx, connection_id: str = "") -> dict | None:
-    conns = await _load_connections(ctx)
-    if not conns: return None
-    if not connection_id:
-        for c in conns:
-            if c.get("is_active"):
-                return c
-        return conns[0]
-    for c in conns:
-        if c["id"] == connection_id:
-            return c
-    return None
+async def resolve_client(ctx, connection_id: str = "") -> CantoClient:
+    connections = await ctx.store.get("connections", [])
+    if not connections:
+        raise ValueError("No Canto connections configured. Use connect_canto first.")
+    conn = None
+    if connection_id:
+        for c in connections:
+            if c.get("id") == connection_id:
+                conn = c
+                break
+        if not conn:
+            raise ValueError(f"Connection {connection_id} not found.")
+    else:
+        conn = connections[0]
+    return CantoClient(auth_token=conn["auth_token"], base_url=conn.get("base_url", ""))
 
 @chat.function(
     "connect_canto",
@@ -44,54 +30,83 @@ async def resolve_connection(ctx, connection_id: str = "") -> dict | None:
     chain_callable=True,
     event="canto-connector.connect_canto",
     effects=["create:connection"],
-    data_model=ConnectParams
+    data_model=ConnectionRecord
 )
-async def connect_canto(params: ConnectParams, ctx) -> ActionResult[ConnectionRecord]:
-    """Connect Canto Connector."""
-    client = CantoClient(api_key=params.api_key, base_url=params.base_url)
-    await client.verify_auth()
-    conns = await _load_connections(ctx)
-    cid = f"conn_{uuid.uuid4().hex[:8]}"
+async def connect_canto(params: ConnectParams, ctx) -> ActionResult:
+    """Connect Canto DAM account."""
+    client = CantoClient(auth_token=params.auth_token, base_url=params.base_url)
+    res = await client.verify_auth()
+    if res.get("status") == "error":
+        return ActionResult.error(f"Failed to authenticate with Canto: {res.get('error')}")
+
+    connections = await ctx.store.get("connections", [])
+    masked = params.auth_token[:6] + "..." if len(params.auth_token) > 6 else "***"
     record = {
-        "id": cid,
-        "label": params.label or "Canto Account",
-        "api_key": params.api_key,
+        "id": f"conn_{uuid.uuid4().hex[:8]}",
+        "label": params.label or "Primary Canto",
+        "auth_token": params.auth_token,
+        "masked_key": masked,
         "base_url": params.base_url,
         "is_active": True
     }
-    for c in conns: c["is_active"] = False
-    conns.append(record)
-    await _save_connections(ctx, conns)
-    return ActionResult.ok(ConnectionRecord(id=cid, label=record["label"], masked_key=_mask(params.api_key), base_url=params.base_url, is_active=True))
+    for c in connections:
+        c["is_active"] = False
+    connections.append(record)
+    await ctx.store.set("connections", connections)
+    return ActionResult.ok(
+        {"id": record["id"], "label": record["label"], "masked_key": record["masked_key"], "base_url": record["base_url"], "is_active": True},
+        summary=f"Connected Canto account '{record['label']}'."
+    )
 
 @chat.function(
     "list_connections",
-    "List connected Canto accounts.",
+    "List configured Canto connections.",
     action_type="read",
     chain_callable=True,
-    data_model=NoParams
+    event="canto-connector.list_connections",
+    effects=["read:connections"],
+    data_model=ConnectionList
 )
-async def list_connections(params: NoParams, ctx) -> ActionResult[ConnectionList]:
-    conns = await _load_connections(ctx)
-    records = [ConnectionRecord(id=c["id"], label=c["label"], masked_key=_mask(c.get("api_key", "")), base_url=c.get("base_url", ""), is_active=c.get("is_active", False)) for c in conns]
-    return ActionResult.ok(ConnectionList(connections=records, total=len(records)))
+async def list_connections(params: NoParams, ctx) -> ActionResult:
+    """List configured connections."""
+    conns = await ctx.store.get("connections", [])
+    items = [
+        ConnectionRecord(
+            id=c["id"],
+            label=c.get("label", ""),
+            masked_key=c.get("masked_key", "***"),
+            base_url=c.get("base_url", ""),
+            is_active=c.get("is_active", False)
+        )
+        for c in conns
+    ]
+    return ActionResult.ok({"connections": [i.model_dump() for i in items], "total": len(items)})
 
 @chat.function(
     "disconnect_canto",
-    "Disconnect Canto account.",
-    action_type="write",
+    "Disconnect Canto account and delete stored credentials.",
+    action_type="destructive",
     chain_callable=True,
     event="canto-connector.disconnect_canto",
     effects=["delete:connection"],
-    data_model=ConnectionIdParams
+    data_model=DeleteResult
 )
-async def disconnect_canto(params: ConnectionIdParams, ctx) -> ActionResult[DeleteResult]:
-    conns = await _load_connections(ctx)
-    target = await resolve_connection(ctx, params.connection_id)
-    if not target:
-        return ActionResult.error("Connection not found", code="NOT_FOUND")
-    new_conns = [c for c in conns if c["id"] != target["id"]]
-    if new_conns and target.get("is_active"):
+async def disconnect_canto(params: ConnectionIdParams, ctx) -> ActionResult:
+    """Disconnect account."""
+    connections = await ctx.store.get("connections", [])
+    if not connections:
+        return ActionResult.error("No active connections to disconnect.")
+
+    target_id = params.connection_id
+    if not target_id:
+        target_id = connections[0]["id"]
+
+    new_conns = [c for c in connections if c.get("id") != target_id]
+    if len(new_conns) == len(connections):
+        return ActionResult.error(f"Connection {target_id} not found.")
+
+    if new_conns and not any(c.get("is_active") for c in new_conns):
         new_conns[0]["is_active"] = True
-    await _save_connections(ctx, new_conns)
-    return ActionResult.ok(DeleteResult(id=target["id"], deleted=True, message="Disconnected successfully"))
+
+    await ctx.store.set("connections", new_conns)
+    return ActionResult.ok({"success": True, "message": f"Disconnected connection {target_id}."}, summary=f"Disconnected Canto connection.")

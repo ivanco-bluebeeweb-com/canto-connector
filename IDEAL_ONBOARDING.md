@@ -1,3 +1,9 @@
-# Canto Connector - IDEAL_ONBOARDING.md
+# Canto Connector — Ideal Onboarding & First Launch
 
-Standard documentation for Canto Connector in Imperal Cloud.
+**Compliance:** ONBOARDING_FIRST_LAUNCH_STANDARD.md
+
+## Шаги онбординга
+1. **Экран первого запуска:** Назначение коннектора Canto и требования к правам доступа.
+2. **Ввод учетных данных:** Форма с явными лейблами, валидацией формата и подсказкой для получения ключа.
+3. **Проверка подключения:** Немедленный вызов `GET /api/v1/tree` с отображением статуса.
+4. **Empty State:** Наглядные рекомендации по первому действию, если данных нет.

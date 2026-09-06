@@ -1,12 +1,16 @@
-"""Pydantic schemas for Canto Connector (C30. Email Marketing & Newsletter)."""
+"""Pydantic schemas for Canto Connector (C33. Digital Asset Management)."""
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 from pydantic import BaseModel, Field
 
+class NoParams(BaseModel):
+    """Empty parameters model."""
+    pass
+
 class ConnectParams(BaseModel):
-    label: str = Field(default="", description="Friendly connection label, e.g. Acme Canto.")
-    api_key: str = Field(description="Marketing API Key or Bearer Token.")
-    base_url: str = Field(default="", description="Optional custom base URL or instance domain.")
+    label: str = Field(default="", description="Friendly connection label, e.g. Primary Canto.")
+    auth_token: str = Field(description="Canto App ID and App Secret or OAuth Bearer token.")
+    base_url: str = Field(default="https://oauth.canto.com/api/v1", description="Canto API base URL.")
 
 class ConnectionIdParams(BaseModel):
     connection_id: str = Field(default="", description="Connection identifier (empty uses active connection).")
@@ -23,225 +27,47 @@ class ConnectionList(BaseModel):
     total: int
 
 class DeleteResult(BaseModel):
-    id: str
-    deleted: bool
+    success: bool
     message: str
 
-class ListSubscriberParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
-
-class GetSubscriberParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    subscriber_id: str = Field(description="Unique identifier of the subscriber.")
-
-class CreateSubscriberParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateSubscriberParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    subscriber_id: str = Field(description="Unique identifier of the subscriber.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteSubscriberParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    subscriber_id: str = Field(description="Unique identifier of the subscriber.")
-
-class SubscriberRecord(BaseModel):
+class AssetRecord(BaseModel):
     id: str
     name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
+    content_type: Optional[str] = None
+    file_size_bytes: Optional[int] = 0
+    thumbnail_url: Optional[str] = None
+    created_at: Optional[str] = None
+    raw: Dict[str, Any] = Field(default_factory=dict)
 
-class SubscriberList(BaseModel):
-    items: list[SubscriberRecord]
+class AssetList(BaseModel):
+    assets: list[AssetRecord]
     total: int
-    next_cursor: Optional[str] = None
 
-class ListCampaignParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
+class ListAssetsParams(BaseModel):
+    connection_id: str = Field(default="", description="Optional connection ID.")
+    limit: int = Field(default=20, ge=1, le=100, description="Max assets to return.")
+    query: Optional[str] = Field(default=None, description="Search keyword or tag filter.")
 
-class GetCampaignParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    campaign_id: str = Field(description="Unique identifier of the campaign.")
+class GetAssetParams(BaseModel):
+    connection_id: str = Field(default="", description="Optional connection ID.")
+    asset_id: str = Field(description="Unique asset identifier.")
 
-class CreateCampaignParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateCampaignParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    campaign_id: str = Field(description="Unique identifier of the campaign.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteCampaignParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    campaign_id: str = Field(description="Unique identifier of the campaign.")
-
-class CampaignRecord(BaseModel):
+class CollectionRecord(BaseModel):
     id: str
     name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
+    asset_count: int = 0
+    raw: Dict[str, Any] = Field(default_factory=dict)
 
-class CampaignList(BaseModel):
-    items: list[CampaignRecord]
+class CollectionList(BaseModel):
+    collections: list[CollectionRecord]
     total: int
-    next_cursor: Optional[str] = None
 
-class ListListParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
+class ListCollectionsParams(BaseModel):
+    connection_id: str = Field(default="", description="Optional connection ID.")
 
-class GetListParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    list_id: str = Field(description="Unique identifier of the list.")
-
-class CreateListParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateListParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    list_id: str = Field(description="Unique identifier of the list.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteListParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    list_id: str = Field(description="Unique identifier of the list.")
-
-class ListRecord(BaseModel):
-    id: str
-    name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
-
-class ListList(BaseModel):
-    items: list[ListRecord]
-    total: int
-    next_cursor: Optional[str] = None
-
-class ListSegmentParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
-
-class GetSegmentParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    segment_id: str = Field(description="Unique identifier of the segment.")
-
-class CreateSegmentParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateSegmentParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    segment_id: str = Field(description="Unique identifier of the segment.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteSegmentParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    segment_id: str = Field(description="Unique identifier of the segment.")
-
-class SegmentRecord(BaseModel):
-    id: str
-    name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
-
-class SegmentList(BaseModel):
-    items: list[SegmentRecord]
-    total: int
-    next_cursor: Optional[str] = None
-
-class ListTemplateParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
-
-class GetTemplateParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    template_id: str = Field(description="Unique identifier of the template.")
-
-class CreateTemplateParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateTemplateParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    template_id: str = Field(description="Unique identifier of the template.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteTemplateParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    template_id: str = Field(description="Unique identifier of the template.")
-
-class TemplateRecord(BaseModel):
-    id: str
-    name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
-
-class TemplateList(BaseModel):
-    items: list[TemplateRecord]
-    total: int
-    next_cursor: Optional[str] = None
-
-class ListAutomationParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    limit: int = Field(default=50, description="Max records to return (1-100).")
-    cursor: str = Field(default="", description="Pagination cursor or page token.")
-
-class GetAutomationParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    automation_id: str = Field(description="Unique identifier of the automation.")
-
-class CreateAutomationParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    name: str = Field(description="Name or title of the record.")
-    details: Optional[dict[str, Any]] = Field(default=None, description="Detailed attributes and payload.")
-
-class UpdateAutomationParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    automation_id: str = Field(description="Unique identifier of the automation.")
-    fields: dict[str, Any] = Field(description="Attributes to update.")
-
-class DeleteAutomationParams(BaseModel):
-    connection_id: str = Field(default="", description="Connection identifier.")
-    automation_id: str = Field(description="Unique identifier of the automation.")
-
-class AutomationRecord(BaseModel):
-    id: str
-    name: str
-    status: str = "active"
-    raw: dict[str, Any] = {}
-
-class AutomationList(BaseModel):
-    items: list[AutomationRecord]
-    total: int
-    next_cursor: Optional[str] = None
-
-class AuditAudienceHealthResult(BaseModel):
+class DamHealthRecord(BaseModel):
+    status: str
+    connection_ok: bool
+    total_assets_sampled: int
+    asset_types_distribution: Dict[str, int] = Field(default_factory=dict)
     summary: str
-    metrics: dict[str, Any]
-    timestamp: str
-
-class GetCampaignAnalyticsResult(BaseModel):
-    summary: str
-    metrics: dict[str, Any]
-    timestamp: str
-
-
-class NoParams(BaseModel):
-    """Empty parameter model."""
-    pass

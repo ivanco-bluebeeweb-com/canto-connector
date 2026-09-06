@@ -4,6 +4,7 @@ import json
 from imperal_sdk import ChatExtension, Extension
 
 ext = Extension(
+    
     "canto-connector",
     version="0.1.0",
     display_name="Canto",
@@ -12,6 +13,7 @@ ext = Extension(
     description="Official Imperal connector for Canto (C30. Email Marketing & Newsletter). Manage operations securely."
 )
 
+app = ext
 chat = ChatExtension(ext)
 
 @ext.health_check
