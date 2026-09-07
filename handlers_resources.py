@@ -18,7 +18,7 @@ from handlers_connection import resolve_client
     effects=["read:assets"],
     data_model=AssetList
 )
-async def list_assets(params: ListAssetsParams, ctx) -> ActionResult:
+async def list_assets(ctx, params: ListAssetsParams) -> ActionResult:
     """List assets from DAM."""
     try:
         client = await resolve_client(ctx, params.connection_id)
@@ -53,7 +53,7 @@ async def list_assets(params: ListAssetsParams, ctx) -> ActionResult:
     effects=["read:asset"],
     data_model=AssetRecord
 )
-async def get_asset(params: GetAssetParams, ctx) -> ActionResult:
+async def get_asset(ctx, params: GetAssetParams) -> ActionResult:
     """Get single asset metadata."""
     try:
         client = await resolve_client(ctx, params.connection_id)
@@ -86,7 +86,7 @@ async def get_asset(params: GetAssetParams, ctx) -> ActionResult:
     effects=["read:collections"],
     data_model=CollectionList
 )
-async def list_collections(params: ListCollectionsParams, ctx) -> ActionResult:
+async def list_collections(ctx, params: ListCollectionsParams) -> ActionResult:
     """List DAM collections/albums."""
     try:
         client = await resolve_client(ctx, params.connection_id)
@@ -115,7 +115,7 @@ async def list_collections(params: ListCollectionsParams, ctx) -> ActionResult:
     effects=["read:dam_health"],
     data_model=DamHealthRecord
 )
-async def audit_dam_health(params: ListAssetsParams, ctx) -> ActionResult:
+async def audit_dam_health(ctx, params: ListAssetsParams) -> ActionResult:
     """Audit DAM health."""
     try:
         client = await resolve_client(ctx, params.connection_id)
