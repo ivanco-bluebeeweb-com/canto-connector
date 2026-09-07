@@ -40,7 +40,7 @@ async def list_assets(params: ListAssetsParams, ctx) -> ActionResult:
                 created_at=str(created) if created else None,
                 raw=a
             ))
-        return ActionResult.ok({"assets": [i.model_dump() for i in items], "total": len(items)})
+        return ActionResult.success({"assets": [i.model_dump() for i in items], "total": len(items)}, summary="Assets listed.")
     except Exception as e:
         return ActionResult.error(f"Error listing Canto assets: {e}")
 
@@ -73,7 +73,7 @@ async def get_asset(params: GetAssetParams, ctx) -> ActionResult:
             created_at=str(created) if created else None,
             raw=a
         )
-        return ActionResult.ok(record.model_dump())
+        return ActionResult.success(record.model_dump(), summary="Asset retrieved.")
     except Exception as e:
         return ActionResult.error(f"Error fetching asset {params.asset_id}: {e}")
 
@@ -102,7 +102,7 @@ async def list_collections(params: ListCollectionsParams, ctx) -> ActionResult:
                 asset_count=int(cnt) if isinstance(cnt, (int, float)) else 0,
                 raw=c
             ))
-        return ActionResult.ok({"collections": [i.model_dump() for i in items], "total": len(items)})
+        return ActionResult.success({"collections": [i.model_dump() for i in items], "total": len(items)}, summary="Collections listed.")
     except Exception as e:
         return ActionResult.error(f"Error listing collections: {e}")
 
@@ -132,6 +132,6 @@ async def audit_dam_health(params: ListAssetsParams, ctx) -> ActionResult:
             asset_types_distribution=types,
             summary=f"Canto library contains {len(assets)} sampled assets across {len(types)} media formats."
         )
-        return ActionResult.ok(rec.model_dump(), summary=rec.summary)
+        return ActionResult.success(rec.model_dump(), summary=rec.summary)
     except Exception as e:
         return ActionResult.error(f"Error auditing DAM health: {e}")

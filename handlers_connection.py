@@ -53,7 +53,7 @@ async def connect_canto(params: ConnectParams, ctx) -> ActionResult:
         c["is_active"] = False
     connections.append(record)
     await ctx.store.set("connections", connections)
-    return ActionResult.ok(
+    return ActionResult.success(
         {"id": record["id"], "label": record["label"], "masked_key": record["masked_key"], "base_url": record["base_url"], "is_active": True},
         summary=f"Connected Canto account '{record['label']}'."
     )
@@ -80,7 +80,7 @@ async def list_connections(params: NoParams, ctx) -> ActionResult:
         )
         for c in conns
     ]
-    return ActionResult.ok({"connections": [i.model_dump() for i in items], "total": len(items)})
+    return ActionResult.success({"connections": [i.model_dump() for i in items], "total": len(items)}, summary="Connections listed.")
 
 @chat.function(
     "disconnect_canto",
@@ -109,4 +109,4 @@ async def disconnect_canto(params: ConnectionIdParams, ctx) -> ActionResult:
         new_conns[0]["is_active"] = True
 
     await ctx.store.set("connections", new_conns)
-    return ActionResult.ok({"success": True, "message": f"Disconnected connection {target_id}."}, summary=f"Disconnected Canto connection.")
+    return ActionResult.success({"success": True, "message": f"Disconnected connection {target_id}."}, summary=f"Disconnected Canto connection.")
