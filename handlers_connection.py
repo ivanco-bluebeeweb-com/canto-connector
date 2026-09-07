@@ -8,7 +8,7 @@ from schemas import NoParams, ConnectParams, ConnectionIdParams, ConnectionRecor
 from canto_client import CantoClient
 
 async def resolve_client(ctx, connection_id: str = "") -> CantoClient:
-    connections = await ctx.store.get("connections", [])
+    connections = (await ctx.store.get("connections", [])) or []
     if not connections:
         raise ValueError("No Canto connections configured. Use connect_canto first.")
     conn = None
@@ -39,7 +39,7 @@ async def connect_canto(ctx, params: ConnectParams) -> ActionResult:
     if res.get("status") == "error":
         return ActionResult.error(f"Failed to authenticate with Canto: {res.get('error')}")
 
-    connections = await ctx.store.get("connections", [])
+    connections = (await ctx.store.get("connections", [])) or []
     masked = params.auth_token[:6] + "..." if len(params.auth_token) > 6 else "***"
     record = {
         "id": f"conn_{uuid.uuid4().hex[:8]}",
@@ -93,7 +93,7 @@ async def list_connections(ctx, params: NoParams) -> ActionResult:
 )
 async def disconnect_canto(ctx, params: ConnectionIdParams) -> ActionResult:
     """Disconnect account."""
-    connections = await ctx.store.get("connections", [])
+    connections = (await ctx.store.get("connections", [])) or []
     if not connections:
         return ActionResult.error("No active connections to disconnect.")
 
