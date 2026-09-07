@@ -69,7 +69,7 @@ async def connect_canto(ctx, params: ConnectParams) -> ActionResult:
 )
 async def list_connections(ctx, params: NoParams) -> ActionResult:
     """List configured connections."""
-    conns = await ctx.store.get("connections", [])
+    conns = (await ctx.store.get("connections", [])) or []
     items = [
         ConnectionRecord(
             id=c["id"],
